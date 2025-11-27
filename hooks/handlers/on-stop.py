@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Hook handler for Stop event.
-Sends macOS notification when a Claude session stops.
+Sends macOS notification when a worktree task session stops.
+
+Only triggers for sessions running inside a tmux worktree-task session,
+not regular Claude Code sessions.
 """
 
 import json
@@ -10,78 +13,101 @@ import subprocess
 import sys
 
 
-def send_macos_notification(title: str, message: str, sound: str = "default"):
-    """Send a macOS notification using osascript."""
-    script = f'''
-    display notification "{message}" with title "{title}" sound name "{sound}"
-    '''
-    subprocess.run(["osascript", "-e", script], capture_output=True)
+def is_worktree_task_session() -> bool:
+    """
+    Check if we're running inside a worktree-task tmux session.
 
+    Returns True only if:
+    1. TMUX env var is set (running inside tmux)
+    2. Session name starts with 'worktree-'
+    """
+    # Must be in tmux
+    if not os.environ.get("TMUX"):
+        return False
 
-def send_terminal_notifier(title: str, message: str):
-    """Send notification via terminal-notifier if available."""
+    # Check tmux session name
     try:
-        subprocess.run([
-            "terminal-notifier",
-            "-title", title,
-            "-message", message,
-            "-sound", "default",
-            "-group", "worktree-task"
-        ], capture_output=True, check=True)
+        result = subprocess.run(
+            ["tmux", "display-message", "-p", "#S"],
+            capture_output=True, text=True, check=True
+        )
+        session_name = result.stdout.strip()
+        return session_name.startswith("worktree-")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def send_macos_notification(title: str, message: str, sound: str = "default"):
+    """Send a macOS notification using osascript (always available on macOS)."""
+    # Escape quotes in message
+    message = message.replace('"', '\\"')
+    title = title.replace('"', '\\"')
+
+    script = f'display notification "{message}" with title "{title}" sound name "{sound}"'
+    try:
+        subprocess.run(["osascript", "-e", script], capture_output=True, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
 
 def get_session_info() -> dict:
-    """Try to determine which worktree session this might be."""
+    """Get info about the current session."""
     cwd = os.getcwd()
-    # Check if we're in a worktree
-    result = subprocess.run(
-        ["git", "worktree", "list", "--porcelain"],
-        capture_output=True, text=True, cwd=cwd
-    )
-
     info = {
         "cwd": cwd,
-        "is_worktree": False,
-        "branch": None
+        "branch": None,
+        "tmux_session": None
     }
 
     # Get current branch
-    branch_result = subprocess.run(
-        ["git", "branch", "--show-current"],
-        capture_output=True, text=True, cwd=cwd
-    )
-    if branch_result.returncode == 0:
-        info["branch"] = branch_result.stdout.strip()
+    try:
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+            capture_output=True, text=True, cwd=cwd
+        )
+        if result.returncode == 0:
+            info["branch"] = result.stdout.strip()
+    except FileNotFoundError:
+        pass
 
-    # Check if this is a worktree (not main working tree)
-    if "worktree" in result.stdout.lower():
-        info["is_worktree"] = True
+    # Get tmux session name
+    if os.environ.get("TMUX"):
+        try:
+            result = subprocess.run(
+                ["tmux", "display-message", "-p", "#S"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                info["tmux_session"] = result.stdout.strip()
+        except FileNotFoundError:
+            pass
 
     return info
 
 
 def main():
-    # Read hook input from stdin
+    # Early exit: only run for worktree-task sessions
+    if not is_worktree_task_session():
+        sys.exit(0)
+
+    # Read hook input from stdin (may be empty)
     try:
         hook_input = json.load(sys.stdin)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, ValueError):
         hook_input = {}
 
     session_info = get_session_info()
+    branch = session_info.get("branch") or "unknown"
+    tmux_session = session_info.get("tmux_session") or "worktree"
 
-    # Only send notification if this appears to be a worktree session
-    # (to avoid notifying on every normal Claude session)
-    if session_info.get("is_worktree") or "worktree" in session_info.get("cwd", "").lower():
-        branch = session_info.get("branch", "unknown")
-        title = "Worktree Task Stopped"
-        message = f"Task on branch '{branch}' has stopped"
+    # Extract task name from tmux session (worktree-{task_name})
+    task_name = tmux_session.replace("worktree-", "") if tmux_session else "task"
 
-        # Try terminal-notifier first (better UX), fallback to osascript
-        if not send_terminal_notifier(title, message):
-            send_macos_notification(title, message)
+    title = "Worktree Task Completed"
+    message = f"Task '{task_name}' on branch '{branch}' has stopped"
+
+    send_macos_notification(title, message)
 
     # Always exit 0 to not block Claude
     sys.exit(0)

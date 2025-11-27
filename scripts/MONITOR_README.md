@@ -14,6 +14,15 @@
 - **定时执行**：每 30 分钟自动检查
 - **日志记录**：完整的操作日志
 
+## Session 命名规范
+
+从 v1.1 开始，session 名称包含项目标识符以避免冲突：
+
+- **新格式**: `<project>-<branch>` (例如: `worktree-task-plugin-feature-add-dashboard`)
+- **旧格式**: `<branch>` (例如: `feature-add-account-scheduler`)
+
+监控脚本兼容两种格式。
+
 ## 快速开始
 
 ### 1. 安装定时任务
@@ -80,6 +89,23 @@ crontab -e
 - 每 15 分钟：`*/15 * * * *`
 - 每小时：`0 * * * *`
 - 每 2 小时：`0 */2 * * *`
+
+### 自定义 Session 匹配模式
+
+默认情况下，监控脚本匹配以下模式的 session：
+- `feature-*`
+- `fix-*`
+- `hotfix-*`
+- `release-*`
+- `worktree-*`
+- `synergy-*`
+- `<project>-feature-*`（新格式）
+
+自定义匹配模式：
+```bash
+export WORKTREE_SESSION_PATTERN="^(myproject-|custom-)"
+./monitor_and_retry.sh --verbose
+```
 
 ### 自定义检测规则
 

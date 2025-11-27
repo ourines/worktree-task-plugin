@@ -77,8 +77,14 @@ log() {
 }
 
 # Get all worktree-task tmux sessions
+# New format: <project>-<branch> (e.g., worktree-task-plugin-feature-add-dashboard)
+# Old format: <branch> (e.g., feature-add-account-scheduler)
+#
+# Strategy: Match sessions that contain common branch prefixes or project names
+# You can customize this by setting WORKTREE_SESSION_PATTERN environment variable
 get_worktree_sessions() {
-    tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -E "^(feature-|worktree-|synergy-)" || true
+    local pattern="${WORKTREE_SESSION_PATTERN:-^(.*-)?(feature-|fix-|hotfix-|release-|worktree-|synergy-)}"
+    tmux list-sessions -F "#{session_name}" 2>/dev/null | grep -E "$pattern" || true
 }
 
 # Check if session is stalled

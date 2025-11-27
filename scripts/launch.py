@@ -135,8 +135,9 @@ def main():
 
     # Setup paths
     project_name = project_dir.name
-    session_name = branch_name.replace("/", "-").replace(".", "-")
-    worktree_dir = project_dir.parent / f"{project_name}-{session_name}"
+    branch_safe = branch_name.replace("/", "-").replace(".", "-")
+    session_name = f"{project_name}-{branch_safe}"
+    worktree_dir = project_dir.parent / f"{project_name}-{branch_safe}"
 
     print("=== Worktree Task Launcher ===")
     print(f"Branch:    {branch_name}")

@@ -35,6 +35,39 @@ def session_exists(name: str) -> bool:
     return result.returncode == 0
 
 
+def wait_for_claude_ready(session_name: str, timeout: int = 30) -> bool:
+    """
+    Wait for Claude Code to be ready by detecting the prompt.
+
+    Returns True if Claude is ready, False if timeout.
+    """
+    print(f"  Waiting for Claude Code to initialize (timeout: {timeout}s)...")
+
+    for i in range(timeout):
+        result = run(f"tmux capture-pane -t {session_name} -p", capture=True)
+        output = result.stdout
+
+        # Get last few lines to check for prompt
+        lines = output.strip().split('\n')
+        last_lines = lines[-5:] if len(lines) >= 5 else lines
+
+        # Check for Claude Code ready indicators
+        for line in last_lines:
+            # Look for the prompt (>) or bypass permissions message
+            if '>' in line or 'bypass permissions' in line.lower():
+                print(f"  ✓ Claude Code ready (took {i+1}s)")
+                return True
+
+        # Show progress every 5 seconds
+        if (i + 1) % 5 == 0:
+            print(f"  Still waiting... ({i+1}/{timeout}s)")
+
+        time.sleep(1)
+
+    print(f"  ⚠ Warning: Claude Code may not be fully ready after {timeout}s")
+    return False
+
+
 def load_task_template(script_dir: Path, task_desc: str, worktree_dir: str) -> str:
     """Load and populate the task prompt template."""
     template_path = script_dir.parent / "references" / "task-prompt-template.md"
@@ -129,14 +162,17 @@ def main():
     print("Launching Claude Code...")
     run(f"tmux send-keys -t {session_name} 'claude --dangerously-skip-permissions' Enter")
 
-    # Wait for Claude to start
-    time.sleep(3)
+    # Wait for Claude Code to be ready (with timeout protection)
+    if not wait_for_claude_ready(session_name, timeout=30):
+        print("  Proceeding anyway, but task may not start correctly...")
+
+    # Extra buffer time to ensure input is ready
+    time.sleep(1)
 
     # Load and send task prompt
     print("Sending task to Claude...")
     task_prompt = load_task_template(script_dir, task_desc, str(worktree_dir))
 
-    # Escape special characters for tmux
     # Use a temp file to avoid shell escaping issues
     temp_file = Path("/tmp/claude_task_prompt.txt")
     temp_file.write_text(task_prompt)
@@ -144,10 +180,9 @@ def main():
     # Send via tmux load-buffer and paste
     run(f"tmux load-buffer -b claude_prompt \"{temp_file}\"")
     run(f"tmux paste-buffer -t {session_name} -b claude_prompt")
-    run(f"tmux send-keys -t {session_name} Enter")
 
-    # Wait a moment then send another Enter to bypass the permissions confirmation
-    time.sleep(1)
+    # Ensure paste completes before sending Enter
+    time.sleep(0.5)
     run(f"tmux send-keys -t {session_name} Enter")
 
     # Cleanup temp file

@@ -1,0 +1,10 @@
+{
+  "name": "worktree-task",
+  "version": "1.0.0",
+  "description": "Manage large coding tasks using git worktrees and background Claude Code sessions. Supports launching, monitoring, resuming, and cleanup of autonomous tasks with alert notifications.",
+  "author": {
+    "name": "ourines"
+  },
+  "keywords": ["worktree", "task", "background", "autonomous", "parallel", "alert"],
+  "repository": "https://github.com/ourines/worktree-task-plugin"
+}

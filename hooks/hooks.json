@@ -1,0 +1,25 @@
+{
+  "description": "Worktree task hooks for alerts and auto-recovery",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/handlers/on-stop.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/handlers/on-session-end.py"
+          }
+        ]
+      }
+    ]
+  }
+}

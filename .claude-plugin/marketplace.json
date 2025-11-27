@@ -1,0 +1,35 @@
+{
+  "name": "worktree-task-plugin",
+  "owner": {
+    "name": "ourines",
+    "email": "github@ourines"
+  },
+  "metadata": {
+    "description": "Claude Code plugin for managing large coding tasks using git worktrees and background sessions",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "worktree-task",
+      "source": "./",
+      "description": "Manage large coding tasks using git worktrees and background Claude Code sessions. Supports launching, monitoring, resuming, and cleanup of autonomous tasks with alert notifications.",
+      "version": "1.0.0",
+      "author": {
+        "name": "ourines"
+      },
+      "homepage": "https://github.com/ourines/worktree-task-plugin",
+      "repository": "https://github.com/ourines/worktree-task-plugin",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "worktree",
+        "background-task",
+        "automation",
+        "parallel",
+        "tmux"
+      ],
+      "category": "productivity",
+      "tags": ["worktree", "background", "task", "automation", "parallel"]
+    }
+  ]
+}

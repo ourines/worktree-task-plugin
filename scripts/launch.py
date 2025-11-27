@@ -95,13 +95,27 @@ Start by reading specs, then create TodoWrite, then execute each phase via Task 
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: launch.py <branch-name> \"<task-description>\"")
+        print("Usage: launch.py <branch-name> \"<task-description>\" [--env KEY=VALUE ...]")
         print("Example: launch.py feature/add-proxy \"Implement the proxy service\"")
+        print("Example: launch.py feature/add-proxy \"Task\" --env ANTHROPIC_BASE_URL=http://api.example.com")
         sys.exit(1)
 
     branch_name = sys.argv[1]
     task_desc = sys.argv[2]
     script_dir = Path(__file__).parent.resolve()
+
+    # Parse custom environment variables
+    custom_env = {}
+    i = 3
+    while i < len(sys.argv):
+        if sys.argv[i] == "--env" and i + 1 < len(sys.argv):
+            env_pair = sys.argv[i + 1]
+            if "=" in env_pair:
+                key, value = env_pair.split("=", 1)
+                custom_env[key] = value
+            i += 2
+        else:
+            i += 1
 
     # Validate git repo
     try:
@@ -160,7 +174,16 @@ def main():
 
     # Launch Claude Code
     print("Launching Claude Code...")
-    run(f"tmux send-keys -t {session_name} 'claude --dangerously-skip-permissions' Enter")
+
+    # Build command with custom environment variables
+    if custom_env:
+        env_exports = " && ".join([f"export {k}='{v}'" for k, v in custom_env.items()])
+        claude_cmd = f"{env_exports} && claude --dangerously-skip-permissions"
+        print(f"  Using custom environment variables: {', '.join(custom_env.keys())}")
+    else:
+        claude_cmd = "claude --dangerously-skip-permissions"
+
+    run(f"tmux send-keys -t {session_name} '{claude_cmd}' Enter")
 
     # Wait for Claude Code to be ready (with timeout protection)
     if not wait_for_claude_ready(session_name, timeout=30):

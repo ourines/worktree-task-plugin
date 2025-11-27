@@ -146,6 +146,10 @@ def main():
     run(f"tmux paste-buffer -t {session_name} -b claude_prompt")
     run(f"tmux send-keys -t {session_name} Enter")
 
+    # Wait a moment then send another Enter to bypass the permissions confirmation
+    time.sleep(1)
+    run(f"tmux send-keys -t {session_name} Enter")
+
     # Cleanup temp file
     temp_file.unlink()
 

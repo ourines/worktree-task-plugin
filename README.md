@@ -8,6 +8,8 @@ Manage large coding tasks using git worktrees and background Claude Code session
 - **Status**: Monitor running tasks and their progress
 - **Resume**: Recover interrupted tasks (rate limits, API errors, timeouts)
 - **Cleanup**: Remove completed tasks and worktrees
+- **Merge**: Merge completed feature branches with automatic conflict resolution
+- **Rebase**: Rebase branches with automatic conflict resolution
 - **Alert**: macOS notifications when tasks complete or fail
 
 ## Usage
@@ -16,16 +18,22 @@ Manage large coding tasks using git worktrees and background Claude Code session
 
 ```bash
 # Launch a new task
-/worktree:launch "Implement user authentication with OAuth2"
+/worktree-task:launch "Implement user authentication with OAuth2"
 
 # Check status
-/worktree:status
+/worktree-task:status
 
 # Resume interrupted task
-/worktree:resume my-task
+/worktree-task:resume my-task
 
 # Cleanup completed task
-/worktree:cleanup my-task --keep-worktree
+/worktree-task:cleanup my-task --keep-worktree
+
+# Merge completed feature branch (run from target branch like dev/main)
+/worktree-task:merge featureA
+
+# Rebase current branch onto feature branch
+/worktree-task:rebase featureA
 ```
 
 ### Via Skill (automatic)
@@ -46,10 +54,12 @@ worktree-task/
 │   └── worktree-task/
 │       └── SKILL.md      # Skill definition
 ├── commands/
-│   ├── launch.md         # /worktree:launch
-│   ├── status.md         # /worktree:status
-│   ├── resume.md         # /worktree:resume
-│   └── cleanup.md        # /worktree:cleanup
+│   ├── launch.md         # /worktree-task:launch
+│   ├── status.md         # /worktree-task:status
+│   ├── resume.md         # /worktree-task:resume
+│   ├── cleanup.md        # /worktree-task:cleanup
+│   ├── merge.md          # /worktree-task:merge
+│   └── rebase.md         # /worktree-task:rebase
 ├── hooks/
 │   ├── hooks.json        # Hook registrations
 │   └── handlers/
@@ -59,9 +69,12 @@ worktree-task/
 │   ├── launch.py         # Task launcher
 │   ├── status.py         # Status checker
 │   ├── resume.py         # Task resumer
-│   └── cleanup.py        # Cleanup handler
+│   ├── cleanup.py        # Cleanup handler
+│   ├── merge.py          # Merge with conflict resolution
+│   └── rebase.py         # Rebase with conflict resolution
 └── references/
-    └── task-prompt-template.md
+    ├── task-prompt-template.md
+    └── merge-rebase-prompt-template.md
 ```
 
 ## How It Works
@@ -71,6 +84,11 @@ worktree-task/
 3. **Alert**: Sends macOS notifications via `osascript`
 4. **Resume**: Detects interrupted state and restarts with context
 5. **Cleanup**: Kills tmux session, removes worktree (optionally keeps branch)
+6. **Merge/Rebase**:
+   - Checks if feature branch has a worktree
+   - If yes: enters worktree, rebases feature onto target branch
+   - Returns to main repo, performs merge/rebase
+   - Uses Claude Code in tmux to automatically resolve conflicts
 
 ## Configuration
 

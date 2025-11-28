@@ -13,8 +13,8 @@ Provide the feature branch name to rebase the current branch onto.
 
 ## Example
 
-User on `dev` branch: "Rebase dev onto featureA"
-User on `main` branch: "Rebase main onto feature/add-auth"
+User on `dev` branch: "Rebase dev onto feature-auth"
+User on `main` branch: "Rebase main onto feature/new-api"
 
 ## Execution
 

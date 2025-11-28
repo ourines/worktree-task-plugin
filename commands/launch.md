@@ -10,12 +10,13 @@ Launch a background Claude Code session in a separate git worktree to execute a 
 ## Usage
 
 Provide:
-1. **Branch name** - The git branch for this task (e.g., `feature/add-proxy-support`)
+
+1. **Branch name** - The git branch for this task (e.g., `feature/my-task`)
 2. **Task description** - What the background Claude should do
 
 ## Example
 
-User: "Launch a worktree task on branch feature/add-auth to implement the authentication module"
+User: "Launch a worktree task on branch feature/auth to implement the authentication module"
 
 ## Execution
 

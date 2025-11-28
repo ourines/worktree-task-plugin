@@ -96,8 +96,8 @@ Start by reading specs, then create TodoWrite, then execute each phase via Task 
 def main():
     if len(sys.argv) < 3:
         print("Usage: launch.py <branch-name> \"<task-description>\" [--env KEY=VALUE ...]")
-        print("Example: launch.py feature/add-proxy \"Implement the proxy service\"")
-        print("Example: launch.py feature/add-proxy \"Task\" --env ANTHROPIC_BASE_URL=http://api.example.com")
+        print("Example: launch.py feature/my-task \"Implement the new feature\"")
+        print("Example: launch.py feature/my-task \"Task\" --env ANTHROPIC_BASE_URL=http://api.codex.markets")
         sys.exit(1)
 
     branch_name = sys.argv[1]

@@ -15,7 +15,7 @@ Check the status of background worktree tasks.
 ## Example
 
 User: "Check status of worktree tasks"
-User: "What's the status of the proxy task?"
+User: "What's the status of the my-feature task?"
 
 ## Execution
 

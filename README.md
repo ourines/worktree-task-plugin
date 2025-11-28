@@ -11,6 +11,7 @@ Manage large coding tasks using git worktrees and background Claude Code session
 - **Merge**: Merge completed feature branches with automatic conflict resolution
 - **Rebase**: Rebase branches with automatic conflict resolution
 - **Alert**: macOS notifications when tasks complete or fail
+- **Auto-Update Check**: Notifies you when plugin updates are available via `/plugin` commands
 
 ## Usage
 
@@ -30,10 +31,10 @@ Manage large coding tasks using git worktrees and background Claude Code session
 /worktree-task:cleanup my-task --keep-worktree
 
 # Merge completed feature branch (run from target branch like dev/main)
-/worktree-task:merge featureA
+/worktree-task:merge feature-branch
 
 # Rebase current branch onto feature branch
-/worktree-task:rebase featureA
+/worktree-task:rebase feature-branch
 ```
 
 ### Via Skill (automatic)
@@ -63,8 +64,9 @@ worktree-task/
 ├── hooks/
 │   ├── hooks.json        # Hook registrations
 │   └── handlers/
-│       ├── on-stop.py    # Task completion notification
-│       └── on-session-end.py
+│       ├── on-session-start.py  # Update checker
+│       ├── on-stop.py           # Task completion notification
+│       └── on-session-end.py    # Session end handler
 ├── scripts/
 │   ├── launch.py         # Task launcher
 │   ├── status.py         # Status checker
@@ -102,3 +104,14 @@ Logs are stored in `~/.claude/worktree-tasks/logs/`.
 - tmux
 - git
 - Python 3.8+
+
+## Support & Community
+
+- ⭐ **Star this repo** if you find it useful!
+- 🐛 [Report issues](https://github.com/ourines/worktree-task-plugin/issues)
+- 💡 [Request features](https://github.com/ourines/worktree-task-plugin/issues/new)
+- 🐦 Follow [@user_name](https://x.com/ourines_) for updates
+
+## License
+
+MIT

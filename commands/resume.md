@@ -15,8 +15,8 @@ Provide:
 
 ## Example
 
-User: "Resume the proxy worktree task"
-User: "Resume proxy with message 'Continue from phase 4'"
+User: "Resume the my-feature worktree task"
+User: "Resume my-feature with message 'Continue from phase 4'"
 
 ## Execution
 

@@ -36,8 +36,8 @@ def main():
         print("  --remove-worktree  Also remove the git worktree directory")
         print()
         print("Examples:")
-        print("  cleanup.py feature-add-proxy                    # Kill session only")
-        print("  cleanup.py feature-add-proxy --remove-worktree  # Kill session and remove worktree")
+        print("  cleanup.py my-feature                    # Kill session only")
+        print("  cleanup.py my-feature --remove-worktree  # Kill session and remove worktree")
         sys.exit(1)
 
     session_name = sys.argv[1]

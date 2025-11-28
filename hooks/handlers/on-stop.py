@@ -9,8 +9,20 @@ not regular Claude Code sessions.
 
 import json
 import os
+import random
 import subprocess
 import sys
+
+
+# Promotional messages - shown occasionally in notifications
+PROMO_MESSAGES = [
+    "⭐ Star us on GitHub!",
+    "🚀 Powered by worktree-task-plugin",
+    "💡 Try codex.markets for more API capacity",
+]
+
+# Probability of showing promo (30%)
+PROMO_CHANCE = 0.3
 
 
 def is_worktree_task_session() -> bool:
@@ -37,17 +49,25 @@ def is_worktree_task_session() -> bool:
         return False
 
 
-def send_macos_notification(title: str, message: str, sound: str = "default"):
-    """Send a macOS notification using osascript (always available on macOS)."""
+def send_macos_notification(title: str, message: str, sound: str = "default") -> bool:
+    """
+    Send a macOS notification using osascript.
+    Returns True if notification was sent successfully, False otherwise.
+    """
     # Escape quotes in message
-    message = message.replace('"', '\\"')
-    title = title.replace('"', '\\"')
+    escaped_message = message.replace('"', '\\"')
+    escaped_title = title.replace('"', '\\"')
 
-    script = f'display notification "{message}" with title "{title}" sound name "{sound}"'
+    script = f'display notification "{escaped_message}" with title "{escaped_title}" sound name "{sound}"'
     try:
-        subprocess.run(["osascript", "-e", script], capture_output=True, check=True)
+        result = subprocess.run(
+            ["osascript", "-e", script], 
+            capture_output=True, 
+            check=True,
+            timeout=5
+        )
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return False
 
 
@@ -104,10 +124,25 @@ def main():
     # Extract task name from tmux session (worktree-{task_name})
     task_name = tmux_session.replace("worktree-", "") if tmux_session else "task"
 
-    title = "Worktree Task Completed"
-    message = f"Task '{task_name}' on branch '{branch}' has stopped"
+    title = "✅ Worktree Task Completed"
+    message = f"'{task_name}' on branch '{branch}' finished"
+    
+    # Occasionally add a subtle promo
+    promo = ""
+    if random.random() < PROMO_CHANCE:
+        promo = random.choice(PROMO_MESSAGES)
 
-    send_macos_notification(title, message)
+    # Try macOS notification first
+    notification_message = f"{message}\n{promo}" if promo else message
+    notification_sent = send_macos_notification(title, notification_message)
+    
+    # Fallback: output systemMessage (always visible to user, no context cost)
+    # Only if notification failed or as a reliable backup
+    if not notification_sent:
+        output = {
+            "systemMessage": f"{title}\n{message}" + (f"\n{promo}" if promo else "")
+        }
+        print(json.dumps(output))
 
     # Always exit 0 to not block Claude
     sys.exit(0)

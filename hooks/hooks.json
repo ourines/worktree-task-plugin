@@ -1,6 +1,18 @@
 {
-  "description": "Worktree task hooks for alerts and auto-recovery",
+  "description": "Worktree task hooks for alerts and update checking",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/handlers/on-session-start.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

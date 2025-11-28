@@ -13,8 +13,8 @@ Provide the feature branch name to merge into the current branch.
 
 ## Example
 
-User on `dev` branch: "Merge featureA into dev"
-User on `main` branch: "Merge feature/add-auth into main"
+User on `dev` branch: "Merge feature-auth into dev"
+User on `main` branch: "Merge feature/new-api into main"
 
 ## Execution
 

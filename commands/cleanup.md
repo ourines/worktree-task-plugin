@@ -15,8 +15,8 @@ Provide:
 
 ## Example
 
-User: "Cleanup the proxy worktree task"
-User: "Cleanup proxy and remove the worktree"
+User: "Cleanup the my-feature worktree task"
+User: "Cleanup my-feature and remove the worktree"
 
 ## Execution
 

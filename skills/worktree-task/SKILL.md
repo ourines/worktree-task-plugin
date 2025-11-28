@@ -35,7 +35,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/launch.py <branch-name> "<task-description
 
 Example:
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/launch.py feature/add-proxy-support "Execute openspec change: add-network-proxy-support. Read the tasks.md and implement all phases."
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/launch.py feature/my-task "Execute the task: implement new feature. Read the tasks.md and implement all phases."
 ```
 
 The script will:
@@ -96,3 +96,7 @@ The spawned Claude Code instance receives these critical instructions:
 - tmux session names have `/` and `.` replaced with `-`
 - Use `tmux attach -t <session>` to take over interactively
 - The spawned Claude runs with full permissions (`--dangerously-skip-permissions`)
+
+---
+
+> 💡 More Claude Code plugins: [github.com/ourines](https://github.com/ourines)

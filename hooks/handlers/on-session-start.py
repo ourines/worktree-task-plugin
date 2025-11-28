@@ -16,10 +16,15 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.request
 import urllib.error
 from pathlib import Path
 
+
+# Cache settings
+CACHE_FILE = Path.home() / ".claude" / "plugins" / ".worktree-task-update-cache.json"
+CACHE_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 
 # Plugin identification
 PLUGIN_NAME = "worktree-task"
@@ -41,6 +46,33 @@ PROMO_LINKS = {
 def get_claude_plugins_dir() -> Path:
     """Get the Claude Code plugins directory."""
     return Path.home() / ".claude" / "plugins"
+
+
+def load_cache() -> dict:
+    """Load update check cache from disk."""
+    if not CACHE_FILE.exists():
+        return {}
+    try:
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return {}
+
+
+def save_cache(cache: dict) -> None:
+    """Save update check cache to disk."""
+    try:
+        CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+    except IOError:
+        pass
+
+
+def is_cache_valid(cache: dict) -> bool:
+    """Check if cache is still valid (within TTL)."""
+    last_check = cache.get("last_check", 0)
+    return (time.time() - last_check) < CACHE_TTL_SECONDS
 
 
 def get_installed_plugin_info() -> dict:
@@ -123,11 +155,19 @@ def run_git_command(cmd: list, cwd: str = None) -> tuple[bool, str]:
             capture_output=True,
             text=True,
             cwd=cwd,
-            timeout=15
+            timeout=5  # Reduced from 15s to 5s for faster startup
         )
         return result.returncode == 0, result.stdout.strip()
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         return False, ""
+
+
+def get_local_commit_sha(install_path: str) -> str:
+    """Get the actual commit SHA from the installed plugin directory (not from installed_plugins.json)."""
+    if not install_path or not os.path.isdir(install_path):
+        return ""
+    success, sha = run_git_command(["git", "rev-parse", "HEAD"], install_path)
+    return sha if success else ""
 
 
 def fetch_github_release() -> dict:
@@ -161,7 +201,7 @@ def fetch_github_release() -> dict:
                 "User-Agent": "worktree-task-plugin"
             }
         )
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=3) as response:
             data = json.loads(response.read().decode("utf-8"))
             result["tag_name"] = data.get("tag_name", "")
             result["name"] = data.get("name", "")
@@ -318,59 +358,74 @@ def main():
         hook_input = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         hook_input = {}
-    
+
     source = hook_input.get("source", "startup")
-    
+
     # Only check on startup, skip for resume/clear/compact to avoid repeated checks
     if source != "startup":
         sys.exit(0)
-    
+
     # Prepare output
     output = {
         "hookSpecificOutput": {
             "hookEventName": "SessionStart"
         }
     }
-    
+
     # Get installed plugin info
     plugin_info = get_installed_plugin_info()
     if not plugin_info["found"]:
         # Plugin not found in installed_plugins.json, skip check
         print(json.dumps(output))
         sys.exit(0)
-    
+
     # Get marketplace info
     marketplace_info = get_marketplace_info()
     install_path = plugin_info["installPath"] or marketplace_info["installLocation"]
-    
+
     if not install_path:
         print(json.dumps(output))
         sys.exit(0)
-    
-    # Check for updates (use version for release comparison)
-    local_sha = plugin_info["gitCommitSha"]
+
+    # Get actual local commit SHA from install directory (not from installed_plugins.json which may be stale)
+    local_sha = get_local_commit_sha(install_path)
+    if not local_sha:
+        # Fallback to installed_plugins.json if git command fails
+        local_sha = plugin_info["gitCommitSha"]
     local_version = plugin_info["version"]
+
+    # Check cache - skip network requests if recently checked with same local SHA
+    cache = load_cache()
+    if is_cache_valid(cache) and cache.get("local_sha") == local_sha:
+        # Use cached result
+        if cache.get("has_updates") and cache.get("message"):
+            output["systemMessage"] = cache["message"]
+        print(json.dumps(output))
+        sys.exit(0)
+
+    # Check for updates (use version for release comparison)
     update_info = check_remote_updates(install_path, local_sha, local_version)
-    
+
+    message = None
     if update_info.get("has_updates"):
         update_type = update_info["update_type"]
-        
+
         if update_type == "release":
             # Release-based update notification
             remote_version = update_info["remote_version"]
             release_name = update_info["release_name"]
-            
+
             message = f"🚀 Worktree Task Plugin: New release available!"
             message += f"\n   {local_version or 'current'} → {remote_version}"
             if release_name and release_name != remote_version:
                 message += f" ({release_name})"
-            
+
             # Show release notes
             if update_info["release_notes"]:
                 formatted_notes = format_release_notes(update_info["release_notes"])
                 if formatted_notes:
                     message += f"\n\n📋 What's New:\n{formatted_notes}"
-            
+
             # Release URL
             if update_info["release_url"]:
                 message += f"\n\n🔗 Details: {update_info['release_url']}"
@@ -379,22 +434,30 @@ def main():
             behind_count = update_info["behind_count"]
             local_sha_short = local_sha[:8] if local_sha else "unknown"
             remote_sha = update_info["remote_sha"]
-            
+
             message = f"🔄 Worktree Task Plugin: {behind_count} update(s) available"
             if local_sha_short and remote_sha:
                 message += f" ({local_sha_short} → {remote_sha})"
-        
+
         # Update commands
         message += f"\n\n📦 To update:\n"
         message += f"  /plugin uninstall {PLUGIN_ID}\n"
         message += f"  /plugin install {PLUGIN_ID}"
-        
+
         # Promotional footer (subtle, at the very end)
         message += f"\n\n─────────────────────────────"
         message += f"\n⭐ Like this plugin? Star us: {PROMO_LINKS['github']}"
-        
+
         output["systemMessage"] = message
-    
+
+    # Save to cache
+    save_cache({
+        "last_check": time.time(),
+        "local_sha": local_sha,
+        "has_updates": update_info.get("has_updates", False),
+        "message": message
+    })
+
     # Output JSON result
     print(json.dumps(output))
     sys.exit(0)

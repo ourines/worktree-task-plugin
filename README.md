@@ -1,10 +1,10 @@
 # Worktree Task Plugin
 
-Manage large coding tasks using git worktrees and background Claude Code sessions.
+Manage large coding tasks using git worktrees and background agent sessions（默认启动 Claude Code `claude --dangerously-skip-permissions`，可用 `--codex` 快速切换 Codex CLI，或 `--agent-cmd` 指定任意命令，如 `codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort="high"`）。
 
 ## Features
 
-- **Launch**: Spawn autonomous Claude Code instances in separate git worktrees
+- **Launch**: Spawn autonomous agent instances (默认 Claude Code，可选 `--codex`/`--agent-cmd`) in separate git worktrees
 - **Status**: Monitor running tasks and their progress
 - **Resume**: Recover interrupted tasks (rate limits, API errors, timeouts)
 - **Cleanup**: Remove completed tasks and worktrees
@@ -81,7 +81,7 @@ worktree-task/
 
 ## How It Works
 
-1. **Launch**: Creates a git worktree, starts a tmux session, runs Claude Code with the task prompt
+1. **Launch**: Creates a git worktree, starts a tmux session, runs Claude Code（或通过 `--codex`/`--agent-cmd` 指定的命令）with the task prompt
 2. **Monitor**: Polls tmux panes to detect completion, errors, or rate limits
 3. **Alert**: Sends macOS notifications via `osascript`
 4. **Resume**: Detects interrupted state and restarts with context

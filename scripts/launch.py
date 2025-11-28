@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Launch a background Claude Code session in a git worktree.
+Launch a background agent session (Codex CLI) in a git worktree.
 
 Usage: launch.py <branch-name> "<task-description>"
 """
@@ -10,6 +10,11 @@ import sys
 import os
 import time
 from pathlib import Path
+
+# Default agent command (Claude Code)
+DEFAULT_AGENT_CMD = 'claude --dangerously-skip-permissions'
+# Codex agent command (optional)
+CODEX_AGENT_CMD = 'codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort="high"'
 
 
 def run(cmd: str, check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
@@ -35,13 +40,13 @@ def session_exists(name: str) -> bool:
     return result.returncode == 0
 
 
-def wait_for_claude_ready(session_name: str, timeout: int = 30) -> bool:
+def wait_for_agent_ready(session_name: str, timeout: int = 30) -> bool:
     """
-    Wait for Claude Code to be ready by detecting the prompt.
+    Wait for the CLI agent to be ready by detecting the prompt.
 
-    Returns True if Claude is ready, False if timeout.
+    Returns True if the agent is ready, False if timeout.
     """
-    print(f"  Waiting for Claude Code to initialize (timeout: {timeout}s)...")
+    print(f"  Waiting for agent to initialize (timeout: {timeout}s)...")
 
     for i in range(timeout):
         result = run(f"tmux capture-pane -t {session_name} -p", capture=True)
@@ -51,11 +56,11 @@ def wait_for_claude_ready(session_name: str, timeout: int = 30) -> bool:
         lines = output.strip().split('\n')
         last_lines = lines[-5:] if len(lines) >= 5 else lines
 
-        # Check for Claude Code ready indicators
+        # Check for agent ready indicators
         for line in last_lines:
             # Look for the prompt (>) or bypass permissions message
             if '>' in line or 'bypass permissions' in line.lower():
-                print(f"  ✓ Claude Code ready (took {i+1}s)")
+                print(f"  ✓ Agent ready (took {i+1}s)")
                 return True
 
         # Show progress every 5 seconds
@@ -64,7 +69,7 @@ def wait_for_claude_ready(session_name: str, timeout: int = 30) -> bool:
 
         time.sleep(1)
 
-    print(f"  ⚠ Warning: Claude Code may not be fully ready after {timeout}s")
+    print(f"  ⚠ Warning: Agent may not be fully ready after {timeout}s")
     return False
 
 
@@ -95,17 +100,20 @@ Start by reading specs, then create TodoWrite, then execute each phase via Task 
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: launch.py <branch-name> \"<task-description>\" [--env KEY=VALUE ...]")
+        print("Usage: launch.py <branch-name> \"<task-description>\" [--env KEY=VALUE ...] [--agent-cmd \"<agent command>\"] [--claude] [--codex]")
         print("Example: launch.py feature/my-task \"Implement the new feature\"")
         print("Example: launch.py feature/my-task \"Task\" --env ANTHROPIC_BASE_URL=http://api.codex.markets")
+        print("Example: launch.py feature/my-task \"Task\" --agent-cmd \"codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort=\\\"high\\\"\"")
+        print("Example: launch.py feature/my-task \"Task\" --codex")
         sys.exit(1)
 
     branch_name = sys.argv[1]
     task_desc = sys.argv[2]
     script_dir = Path(__file__).parent.resolve()
 
-    # Parse custom environment variables
+    # Parse custom environment variables and agent command override
     custom_env = {}
+    agent_cmd_override = None
     i = 3
     while i < len(sys.argv):
         if sys.argv[i] == "--env" and i + 1 < len(sys.argv):
@@ -114,6 +122,15 @@ def main():
                 key, value = env_pair.split("=", 1)
                 custom_env[key] = value
             i += 2
+        elif sys.argv[i] == "--agent-cmd" and i + 1 < len(sys.argv):
+            agent_cmd_override = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == "--codex":
+            agent_cmd_override = CODEX_AGENT_CMD
+            i += 1
+        elif sys.argv[i] == "--claude":
+            agent_cmd_override = DEFAULT_AGENT_CMD
+            i += 1
         else:
             i += 1
 
@@ -173,28 +190,34 @@ def main():
     # Wait for shell to initialize
     time.sleep(1)
 
-    # Launch Claude Code
-    print("Launching Claude Code...")
+    # Launch agent
+    print("Launching agent...")
 
     # Build command with custom environment variables
+    agent_cmd_base = agent_cmd_override if agent_cmd_override else DEFAULT_AGENT_CMD
     if custom_env:
         env_exports = " && ".join([f"export {k}='{v}'" for k, v in custom_env.items()])
-        claude_cmd = f"{env_exports} && claude --dangerously-skip-permissions"
+        agent_cmd = f"{env_exports} && {agent_cmd_base}"
         print(f"  Using custom environment variables: {', '.join(custom_env.keys())}")
     else:
-        claude_cmd = "claude --dangerously-skip-permissions"
+        agent_cmd = agent_cmd_base
 
-    run(f"tmux send-keys -t {session_name} '{claude_cmd}' Enter")
+    if agent_cmd_override:
+        print(f"  Agent command override: {agent_cmd_base}")
+    else:
+        print(f"  Agent command (default): {agent_cmd_base}")
 
-    # Wait for Claude Code to be ready (with timeout protection)
-    if not wait_for_claude_ready(session_name, timeout=30):
+    run(f"tmux send-keys -t {session_name} '{agent_cmd}' Enter")
+
+    # Wait for agent to be ready (with timeout protection)
+    if not wait_for_agent_ready(session_name, timeout=30):
         print("  Proceeding anyway, but task may not start correctly...")
 
     # Extra buffer time to ensure input is ready
     time.sleep(1)
 
     # Load and send task prompt
-    print("Sending task to Claude...")
+    print("Sending task to agent...")
     task_prompt = load_task_template(script_dir, task_desc, str(worktree_dir))
 
     # Use a temp file to avoid shell escaping issues

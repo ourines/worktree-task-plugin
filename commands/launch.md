@@ -5,7 +5,7 @@ allowed-tools: Bash
 
 # Launch Worktree Task
 
-Launch a background Claude Code session in a separate git worktree to execute a large task autonomously.
+默认启动 Claude Code (`claude --dangerously-skip-permissions`)，可选参数：`--codex` 快速切换到 Codex CLI，或用 `--agent-cmd "codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort=\"high\""` 自定义命令；在单独的 git worktree 中自主执行大任务。
 
 ## Usage
 

@@ -1,11 +1,11 @@
 ---
 name: worktree-task
-description: Manage large coding tasks using git worktrees and background Claude Code sessions. Use this when users want to execute large, complex tasks (like implementing a new service, major refactoring, or multi-step features) in isolation without blocking the current session. Spawns autonomous Claude Code instances via tmux.
+description: 使用 git worktree + 背景代理会话管理大型任务（默认启动 Claude Code；可用 --codex 快速切到 Codex CLI，或通过 --agent-cmd 指定任意命令）。适合用户希望在不阻塞当前会话的情况下执行大型或多步骤任务。
 ---
 
 # Worktree Task Manager
 
-This skill manages large coding tasks by spawning autonomous Claude Code instances in separate git worktrees via tmux sessions.
+This skill manages large coding tasks by spawning autonomous agent instances (默认 Claude Code，可选 `--codex`/`--agent-cmd`) in separate git worktrees via tmux sessions.
 
 ## When to Use
 
@@ -42,7 +42,7 @@ The script will:
 1. Verify git status is clean (or prompt to commit/stash)
 2. Create a git worktree with the specified branch
 3. Create a tmux session
-4. Launch Claude Code with `--dangerously-skip-permissions`
+4. Launch Claude Code by default (use `--codex` for default Codex command or `--agent-cmd` to switch, e.g., `codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort="high"`)
 5. Send the task with instructions to use Task tool for each phase
 
 ### 2. Monitor Progress
@@ -82,7 +82,7 @@ Configure alerts in `hooks/hooks.json`.
 
 ## Critical Instructions for Spawned Claude
 
-The spawned Claude Code instance receives these critical instructions:
+The spawned agent receives these critical instructions:
 
 1. **MUST use Task tool** - Each major phase must be executed via `Task` tool to prevent context overflow
 2. **Silent mode** - No confirmations needed, user has pre-approved all operations

@@ -94,9 +94,10 @@ worktree-task/
 
 ## Configuration
 
-Tasks are tracked in `~/.claude/worktree-tasks/tasks.json`.
+Tasks are tracked via **tmux sessions** and **git worktrees** - no separate database needed.
 
-Logs are stored in `~/.claude/worktree-tasks/logs/`.
+- Worktrees: Created in parent directory (e.g., `../worktree-task-<name>`)
+- Monitor logs: `.monitor_cron.log` in plugin directory
 
 ## Requirements
 

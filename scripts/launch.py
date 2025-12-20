@@ -98,13 +98,34 @@ Start by reading specs, then create TodoWrite, then execute each phase via Task 
     return template
 
 
+def start_monitor(session_name: str, worktree_dir: Path, script_dir: Path):
+    """Start the monitor process in the background."""
+    monitor_script = script_dir / "monitor.py"
+    log_file = worktree_dir / ".worktree-task" / "monitor.log"
+
+    # Ensure log directory exists
+    log_file.parent.mkdir(exist_ok=True)
+
+    # Start monitor as a background process
+    cmd = f"nohup python3 \"{monitor_script}\" {session_name} \"{worktree_dir}\" > \"{log_file}\" 2>&1 &"
+    subprocess.Popen(cmd, shell=True, start_new_session=True)
+
+
 def main():
     if len(sys.argv) < 3:
-        print("Usage: launch.py <branch-name> \"<task-description>\" [--env KEY=VALUE ...] [--agent-cmd \"<agent command>\"] [--claude] [--codex]")
-        print("Example: launch.py feature/my-task \"Implement the new feature\"")
-        print("Example: launch.py feature/my-task \"Task\" --env ANTHROPIC_BASE_URL=http://api.codex.markets")
-        print("Example: launch.py feature/my-task \"Task\" --agent-cmd \"codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort=\\\"high\\\"\"")
-        print("Example: launch.py feature/my-task \"Task\" --codex")
+        print("Usage: launch.py <branch-name> \"<task-description>\" [options]")
+        print()
+        print("Options:")
+        print("  --env KEY=VALUE      Set environment variable")
+        print("  --agent-cmd \"cmd\"    Custom agent command")
+        print("  --claude             Use Claude Code (default)")
+        print("  --codex              Use Codex CLI")
+        print("  --no-monitor         Disable auto-recovery monitor")
+        print()
+        print("Examples:")
+        print("  launch.py feature/my-task \"Implement the new feature\"")
+        print("  launch.py feature/my-task \"Task\" --codex")
+        print("  launch.py feature/my-task \"Task\" --no-monitor")
         sys.exit(1)
 
     branch_name = sys.argv[1]
@@ -114,6 +135,7 @@ def main():
     # Parse custom environment variables and agent command override
     custom_env = {}
     agent_cmd_override = None
+    enable_monitor = True  # Default: monitor enabled
     i = 3
     while i < len(sys.argv):
         if sys.argv[i] == "--env" and i + 1 < len(sys.argv):
@@ -130,6 +152,9 @@ def main():
             i += 1
         elif sys.argv[i] == "--claude":
             agent_cmd_override = DEFAULT_AGENT_CMD
+            i += 1
+        elif sys.argv[i] == "--no-monitor":
+            enable_monitor = False
             i += 1
         else:
             i += 1
@@ -235,10 +260,18 @@ def main():
     # Cleanup temp file
     temp_file.unlink()
 
+    # Start monitor process (default: enabled)
+    if enable_monitor:
+        print("Starting auto-recovery monitor...")
+        start_monitor(session_name, worktree_dir, script_dir)
+        print("  ✓ Monitor running in background")
+
     print()
     print("=== Task Launched Successfully ===")
     print()
-    print(f"Monitor:  {script_dir}/status.py {session_name}")
+    if enable_monitor:
+        print(f"Monitor:  tail -f \"{worktree_dir}/.worktree-task/monitor.log\"")
+    print(f"Status:   {script_dir}/status.py {session_name}")
     print(f"Attach:   tmux attach -t {session_name}")
     print(f"Kill:     tmux kill-session -t {session_name}")
     print(f"Cleanup:  {script_dir}/cleanup.py {session_name} --remove-worktree")

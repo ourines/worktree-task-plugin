@@ -100,8 +100,19 @@ def get_installed_plugin_info() -> dict:
         with open(plugins_file, "r") as f:
             data = json.load(f)
         
-        plugin_info = data.get("plugins", {}).get(PLUGIN_ID, {})
-        if plugin_info:
+        plugin_list = data.get("plugins", {}).get(PLUGIN_ID, [])
+        # plugin_list is an array (may have multiple scopes: user, local, etc.)
+        # Prefer "user" scope, fallback to first entry
+        plugin_info = None
+        if isinstance(plugin_list, list) and plugin_list:
+            for entry in plugin_list:
+                if entry.get("scope") == "user":
+                    plugin_info = entry
+                    break
+            if not plugin_info:
+                plugin_info = plugin_list[0]
+
+        if plugin_info and isinstance(plugin_info, dict):
             result["version"] = plugin_info.get("version", "")
             result["gitCommitSha"] = plugin_info.get("gitCommitSha", "")
             result["installPath"] = plugin_info.get("installPath", "")

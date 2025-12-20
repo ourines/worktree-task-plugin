@@ -28,6 +28,18 @@ def get_git_root() -> Path:
     return Path(result.stdout.strip())
 
 
+def kill_monitor_process(session_name: str, worktree_dir: Path):
+    """Kill any monitor process associated with this session."""
+    # Find and kill monitor process by matching command line
+    result = run(f"pgrep -f 'monitor.py {session_name}'", check=False, capture=True)
+    if result.returncode == 0 and result.stdout.strip():
+        pids = result.stdout.strip().split('\n')
+        for pid in pids:
+            if pid:
+                run(f"kill {pid}", check=False)
+                print(f"  ✓ Killed monitor process (PID: {pid})")
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: cleanup.py <session-name> [--remove-worktree]")
@@ -46,6 +58,16 @@ def main():
     print("=== Worktree Task Cleanup ===")
     print()
 
+    # Kill monitor process first
+    try:
+        project_dir = get_git_root()
+        project_name = project_dir.name
+        worktree_dir = project_dir.parent / f"{project_name}-{session_name}"
+        print("Killing monitor process...")
+        kill_monitor_process(session_name, worktree_dir)
+    except subprocess.CalledProcessError:
+        worktree_dir = None
+
     # Kill tmux session
     print(f"Killing tmux session: {session_name}")
     if session_exists(session_name):
@@ -55,14 +77,15 @@ def main():
         print("  ⚠ Session not found (may already be closed)")
     print()
 
-    # Find worktree path
-    try:
-        project_dir = get_git_root()
-        project_name = project_dir.name
-        worktree_dir = project_dir.parent / f"{project_name}-{session_name}"
-    except subprocess.CalledProcessError:
-        print("Warning: Not in a git repository, cannot determine worktree path")
-        worktree_dir = None
+    # Find worktree path (if not already set)
+    if worktree_dir is None:
+        try:
+            project_dir = get_git_root()
+            project_name = project_dir.name
+            worktree_dir = project_dir.parent / f"{project_name}-{session_name}"
+        except subprocess.CalledProcessError:
+            print("Warning: Not in a git repository, cannot determine worktree path")
+            worktree_dir = None
 
     # Show worktrees
     print("=== Git Worktrees ===")

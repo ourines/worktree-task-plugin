@@ -1,40 +1,58 @@
 # Worktree Task Plugin
 
-Manage large coding tasks using git worktrees and background agent sessions（默认启动 Claude Code `claude --dangerously-skip-permissions`，可用 `--codex` 快速切换 Codex CLI，或 `--agent-cmd` 指定任意命令，如 `codex --yolo -m gpt-5.1-codex-max -c model_reasoning_effort="high"`）。
+[![GitHub release](https://img.shields.io/github/v/release/ourines/worktree-task-plugin)](https://github.com/ourines/worktree-task-plugin/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Manage large coding tasks using git worktrees and background agent sessions. Spawns autonomous Claude Code or Codex instances that run independently, freeing your main session.
 
 ## Features
 
-- **Launch**: Spawn autonomous agent instances (默认 Claude Code，可选 `--codex`/`--agent-cmd`) in separate git worktrees
+- **Launch**: Spawn autonomous agent instances in separate git worktrees
+  - Default: Claude Code (`claude --dangerously-skip-permissions`)
+  - `--codex`: Quick switch to Codex CLI
+  - `--agent-cmd`: Custom agent command
+- **Auto-Recovery**: Background monitor automatically detects and recovers from errors (rate limits, API errors, timeouts)
 - **Status**: Monitor running tasks and their progress
-- **Resume**: Recover interrupted tasks (rate limits, API errors, timeouts)
+- **Resume**: Manually recover interrupted tasks
 - **Cleanup**: Remove completed tasks and worktrees
-- **Merge**: Merge completed feature branches with automatic conflict resolution
-- **Rebase**: Rebase branches with automatic conflict resolution
-- **Alert**: macOS notifications when tasks complete or fail
-- **Auto-Update Check**: Notifies you when plugin updates are available via `/plugin` commands
+- **Merge/Rebase**: Automatic conflict resolution powered by Claude
+- **Alerts**: macOS notifications when tasks complete or fail
+- **Auto-Update**: Notifies when plugin updates are available
 
 ## Usage
 
 ### Via Commands (recommended)
 
 ```bash
-# Launch a new task
+# Launch a new task (auto-recovery enabled by default)
 /worktree-task:launch "Implement user authentication with OAuth2"
 
-# Check status
+# Launch with Codex instead of Claude
+/worktree-task:launch --codex "Refactor database layer"
+
+# Launch without auto-recovery
+/worktree-task:launch --no-monitor "Quick fix task"
+
+# Check status of all tasks
 /worktree-task:status
 
-# Resume interrupted task
+# Check specific task
+/worktree-task:status my-task
+
+# Resume interrupted task manually
 /worktree-task:resume my-task
 
 # Cleanup completed task
 /worktree-task:cleanup my-task --keep-worktree
 
-# Merge completed feature branch (run from target branch like dev/main)
+# Merge feature branch (run from target branch)
 /worktree-task:merge feature-branch
 
 # Rebase current branch onto feature branch
 /worktree-task:rebase feature-branch
+
+# Show help
+/worktree-task:help
 ```
 
 ### Via Skill (automatic)
@@ -60,7 +78,8 @@ worktree-task/
 │   ├── resume.md         # /worktree-task:resume
 │   ├── cleanup.md        # /worktree-task:cleanup
 │   ├── merge.md          # /worktree-task:merge
-│   └── rebase.md         # /worktree-task:rebase
+│   ├── rebase.md         # /worktree-task:rebase
+│   └── help.md           # /worktree-task:help
 ├── hooks/
 │   ├── hooks.json        # Hook registrations
 │   └── handlers/
@@ -73,7 +92,8 @@ worktree-task/
 │   ├── resume.py         # Task resumer
 │   ├── cleanup.py        # Cleanup handler
 │   ├── merge.py          # Merge with conflict resolution
-│   └── rebase.py         # Rebase with conflict resolution
+│   ├── rebase.py         # Rebase with conflict resolution
+│   └── monitor.py        # Auto-recovery background monitor
 └── references/
     ├── task-prompt-template.md
     └── merge-rebase-prompt-template.md
@@ -81,16 +101,12 @@ worktree-task/
 
 ## How It Works
 
-1. **Launch**: Creates a git worktree, starts a tmux session, runs Claude Code（或通过 `--codex`/`--agent-cmd` 指定的命令）with the task prompt
-2. **Monitor**: Polls tmux panes to detect completion, errors, or rate limits
-3. **Alert**: Sends macOS notifications via `osascript`
-4. **Resume**: Detects interrupted state and restarts with context
-5. **Cleanup**: Kills tmux session, removes worktree (optionally keeps branch)
-6. **Merge/Rebase**:
-   - Checks if feature branch has a worktree
-   - If yes: enters worktree, rebases feature onto target branch
-   - Returns to main repo, performs merge/rebase
-   - Uses Claude Code in tmux to automatically resolve conflicts
+1. **Launch**: Creates a git worktree, starts a tmux session, runs the agent with task prompt
+2. **Auto-Recovery**: Background monitor polls for errors and automatically resumes (rate limits, API errors, timeouts)
+3. **Monitor**: Check progress via `/worktree-task:status`
+4. **Alert**: macOS notifications via `osascript` on completion/failure
+5. **Cleanup**: Kills tmux session, stops monitor, removes worktree
+6. **Merge/Rebase**: Uses Claude in tmux to automatically resolve conflicts
 
 ## Configuration
 
